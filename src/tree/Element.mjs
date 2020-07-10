@@ -1,6 +1,24 @@
+/*
+ * If not stated otherwise in this file or this component's LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2020 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the License);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * Render tree node.
- * Copyright Metrological, 2017
  */
 
 import StageUtils from "./StageUtils.mjs";
@@ -699,6 +717,11 @@ export default class Element {
                 ty2 = Math.min(1, ty2);
             }
 
+            if (displayedTextureSource._flipTextureY) {
+                let tempty = ty2;
+                ty2 = ty1;
+                ty1 = tempty;
+            }
             this.__core.setTextureCoords(tx1, ty1, tx2, ty2);
         }
     }
@@ -1264,7 +1287,7 @@ export default class Element {
             }
         }
 
-        if (this.shader) {
+        if (this.shader && Utils.isFunction(this.shader.getNonDefaults)) {
             let tnd = this.shader.getNonDefaults();
             if (Object.keys(tnd).length) {
                 settings.shader = tnd;
@@ -2011,6 +2034,66 @@ export default class Element {
         } else {
             return StageUtils.mergeNumbers;
         }
+    }
+
+    toJSON() {
+        const ref = [`${this.constructor.name}`];
+        const tree = {[ref]: {}};
+
+        if (this.hasChildren()) {
+            Element.collectChildren(tree[ref], this.__childList);
+        } else {
+            tree[ref] = {...Element.getProperties(this)};
+        }
+        return tree;
+    }
+
+    static collectChildren(tree, children) {
+        const childList = children;
+        for (let i = 0, j = childList.length; i < j; i++) {
+            const element = childList.getAt(i);
+            const ref = `${element.__ref || `Element-${element.id}`}`;
+            const properties = this.getProperties(element);
+
+            tree[ref] = {...properties};
+
+            if (element.hasChildren()) {
+                tree[ref].children = {};
+                this.collectChildren(
+                    tree[ref].children, element.__childList
+                );
+            }
+        }
+    }
+
+    static getProperties(element) {
+        const props = {};
+        const list = [
+            "alpha", "active", "attached", "boundsMargin", "color", "clipping", "enabled", "h", "id", "isComponent",
+            "mount", "mountY", "mountX", "pivot", "pivotX", "pivotY", "ref", "renderOfScreen", "renderToTexture", "scale",
+            "scaleX", "scaleY", "state", "tag", "visible", "w", "x", "y", "zIndex",
+            "!!flex", "!!flexItem", "hasFocus()", "hasFinalFocus()"
+        ];
+        let n = list.length;
+
+        while (n--) {
+            let key = list[n];
+            const getBoolean = /^!{2}/;
+            const isFunction = /\(\)$/;
+
+            if (getBoolean.test(key)) {
+                key = key.substring(2, key.length);
+                props[key] = !!element[key];
+            } else if (isFunction.test(key)) {
+                key = key.substring(0, key.length - 2);
+                if (typeof element[key] === "function") {
+                    props[key] = element[key]();
+                }
+            } else {
+                props[key] = element[key];
+            }
+        }
+        return {...props, ...element.getNonDefaults()};
     }
 }
 

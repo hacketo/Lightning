@@ -1,12 +1,31 @@
+/*
+ * If not stated otherwise in this file or this component's LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2020 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the License);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * Application render tree.
- * Copyright Metrological, 2017;
  */
 
 import EventEmitter from "../EventEmitter.mjs";
 import Utils from "./Utils.mjs";
 import WebGLRenderer from "../renderer/webgl/WebGLRenderer.mjs";
 import C2dRenderer from "../renderer/c2d/C2dRenderer.mjs";
+import SparkRenderer from "../renderer/spark/SparkRenderer.mjs";
 import PlatformLoader from "../platforms/PlatformLoader.mjs";
 import WebGLStateManager from "../tools/WebGLStateManager.mjs";
 import Shader from "./Shader.mjs";
@@ -64,7 +83,11 @@ export default class Stage extends EventEmitter {
         }
 
         if (this._mode === 0) {
-            this._renderer = new WebGLRenderer(this);
+            if (Utils.isSpark) {
+                this._renderer = new SparkRenderer(this);
+            } else {
+                this._renderer = new WebGLRenderer(this);
+            }
         } else {
             this._renderer = new C2dRenderer(this);
         }
@@ -407,6 +430,11 @@ export default class Stage extends EventEmitter {
         this.ctx.update()
     }
 
+    addServiceProvider(serviceprovider) {
+        if (Utils.isSpark) {
+            this.platform.addServiceProvider(serviceprovider);
+        }
+    }
 }
 
 import Element from "./Element.mjs";
